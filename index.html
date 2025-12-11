@@ -26,7 +26,54 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        body { background: var(--bg-dark); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+        body { background: var(--bg-dark); color: var(--text-main); min-height: 100vh; overflow-x: hidden; }
+
+        /* --- LOGIN STYLES --- */
+        #login-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #000;
+            z-index: 9999;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            left: 0;
+        }
+        .login-card {
+            background: var(--bg-card);
+            padding: 40px;
+            border-radius: 15px;
+            border: 1px solid #222;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .login-title { font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 30px; letter-spacing: 1px; }
+        .input-group { margin-bottom: 20px; text-align: left; }
+        .input-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; }
+        .input-field { 
+            width: 100%; padding: 12px; background: #050505; border: 1px solid #333; 
+            color: white; border-radius: 6px; outline: none; transition: 0.3s; 
+        }
+        .input-field:focus { border-color: var(--primary); }
+        .btn-login {
+            width: 100%; padding: 12px; background: var(--primary); border: none; 
+            border-radius: 6px; font-weight: 700; cursor: pointer; margin-top: 10px;
+            color: #000; font-size: 14px; text-transform: uppercase;
+        }
+        .btn-login:hover { opacity: 0.9; }
+        .error-msg { color: var(--red); font-size: 12px; margin-top: 15px; min-height: 18px; }
+
+        /* --- DASHBOARD WRAPPER --- */
+        #dashboard-wrapper {
+            display: none; /* Hidden by default */
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+        }
 
         /* --- SIDEBAR --- */
         .sidebar {
@@ -70,7 +117,7 @@
         }
 
         /* --- CONTENT --- */
-        .main { margin-left: 260px; padding: 40px; flex: 1; }
+        .main { margin-left: 260px; padding: 40px; flex: 1; width: 100%; }
         .page-title { font-size: 24px; font-weight: 600; margin-bottom: 30px; border-bottom: 1px solid #222; padding-bottom: 15px; }
 
         /* --- STAT CARDS --- */
@@ -130,133 +177,194 @@
 </head>
 <body>
 
-    <nav class="sidebar">
-        <div class="brand"><i class="fas fa-shield-alt"></i> MASTER ADMIN</div>
-        <div class="nav-item active" onclick="switchTab('overview', this)"><i class="fas fa-chart-pie"></i> Overview</div>
-        <div class="nav-item" onclick="switchTab('deposits', this)"><i class="fas fa-arrow-down"></i> Deposits <span id="badge-dep" style="margin-left:auto; font-size:10px; background:var(--primary); color:black; padding:2px 6px; border-radius:10px; display:none;">0</span></div>
-        <div class="nav-item" onclick="switchTab('withdraws', this)"><i class="fas fa-arrow-up"></i> Withdrawals <span id="badge-with" style="margin-left:auto; font-size:10px; background:var(--red); color:white; padding:2px 6px; border-radius:10px; display:none;">0</span></div>
-        <div class="nav-item" onclick="switchTab('users', this)"><i class="fas fa-users"></i> User Database</div>
-    </nav>
+    <!-- === LOGIN SECTION === -->
+    <div id="login-section">
+        <div class="login-card">
+            <div class="login-title"><i class="fas fa-lock"></i> SECURE LOGIN</div>
+            <div class="input-group">
+                <label>Username</label>
+                <input type="text" id="admin-user" class="input-field" placeholder="Enter username">
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="admin-pass" class="input-field" placeholder="Enter password">
+            </div>
+            <button onclick="performLogin()" class="btn-login">Access Panel</button>
+            <div id="login-error" class="error-msg"></div>
+        </div>
+    </div>
 
-    <div class="main">
-        
-        <div id="sec-overview">
-            <h2 class="page-title">Dashboard Overview</h2>
+    <!-- === DASHBOARD SECTION === -->
+    <div id="dashboard-wrapper" style="display: none;"> <!-- Explicitly hidden inline -->
+        <nav class="sidebar">
+            <div class="brand"><i class="fas fa-shield-alt"></i> MASTER ADMIN</div>
+            <div class="nav-item active" onclick="switchTab('overview', this)"><i class="fas fa-chart-pie"></i> Overview</div>
+            <div class="nav-item" onclick="switchTab('deposits', this)"><i class="fas fa-arrow-down"></i> Deposits <span id="badge-dep" style="margin-left:auto; font-size:10px; background:var(--primary); color:black; padding:2px 6px; border-radius:10px; display:none;">0</span></div>
+            <div class="nav-item" onclick="switchTab('withdraws', this)"><i class="fas fa-arrow-up"></i> Withdrawals <span id="badge-with" style="margin-left:auto; font-size:10px; background:var(--red); color:white; padding:2px 6px; border-radius:10px; display:none;">0</span></div>
+            <div class="nav-item" onclick="switchTab('users', this)"><i class="fas fa-users"></i> User Database</div>
+            <div class="nav-item" onclick="logoutAdmin()" style="margin-top:auto; color:var(--red);"><i class="fas fa-sign-out-alt"></i> Logout</div>
+        </nav>
+
+        <div class="main">
             
-            <div class="stats-grid">
-                <div class="stat-card card-users">
-                    <i class="fas fa-users stat-icon" style="color: var(--blue);"></i>
-                    <div class="stat-lbl">Total Users</div>
-                    <div class="stat-val" id="st-users">0</div>
+            <div id="sec-overview">
+                <h2 class="page-title">Dashboard Overview</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card card-users">
+                        <i class="fas fa-users stat-icon" style="color: var(--blue);"></i>
+                        <div class="stat-lbl">Total Users</div>
+                        <div class="stat-val" id="st-users">Loading...</div>
+                    </div>
+
+                    <div class="stat-card card-dep-tot">
+                        <i class="fas fa-sack-dollar stat-icon" style="color: var(--green);"></i>
+                        <div class="stat-lbl">Total Deposited</div>
+                        <div class="stat-val" style="color: var(--green);">Rs <span id="st-total-dep">0</span></div>
+                    </div>
+
+                    <div class="stat-card card-with-tot">
+                        <i class="fas fa-hand-holding-usd stat-icon" style="color: var(--red);"></i>
+                        <div class="stat-lbl">Total Withdrawn</div>
+                        <div class="stat-val" style="color: var(--red);">Rs <span id="st-total-with">0</span></div>
+                    </div>
+
+                    <div class="stat-card card-dep-pen">
+                        <i class="fas fa-clock stat-icon" style="color: var(--primary);"></i>
+                        <div class="stat-lbl">Pending Deposits</div>
+                        <div class="stat-val" style="color: var(--primary);"><span id="st-pending-dep">0</span></div>
+                    </div>
+
+                    <div class="stat-card card-with-pen">
+                        <i class="fas fa-exclamation-circle stat-icon" style="color: orange;"></i>
+                        <div class="stat-lbl">Pending Withdrawals</div>
+                        <div class="stat-val" style="color: orange;"><span id="st-pending-with">0</span></div>
+                    </div>
                 </div>
 
-                <div class="stat-card card-dep-tot">
-                    <i class="fas fa-sack-dollar stat-icon" style="color: var(--green);"></i>
-                    <div class="stat-lbl">Total Deposited</div>
-                    <div class="stat-val" style="color: var(--green);">Rs <span id="st-total-dep">0</span></div>
-                </div>
-
-                <div class="stat-card card-with-tot">
-                    <i class="fas fa-hand-holding-usd stat-icon" style="color: var(--red);"></i>
-                    <div class="stat-lbl">Total Withdrawn</div>
-                    <div class="stat-val" style="color: var(--red);">Rs <span id="st-total-with">0</span></div>
-                </div>
-
-                <div class="stat-card card-dep-pen">
-                    <i class="fas fa-clock stat-icon" style="color: var(--primary);"></i>
-                    <div class="stat-lbl">Pending Deposits</div>
-                    <div class="stat-val" style="color: var(--primary);"><span id="st-pending-dep">0</span></div>
-                </div>
-
-                <div class="stat-card card-with-pen">
-                    <i class="fas fa-exclamation-circle stat-icon" style="color: orange;"></i>
-                    <div class="stat-lbl">Pending Withdrawals</div>
-                    <div class="stat-val" style="color: orange;"><span id="st-pending-with">0</span></div>
+                <div style="background: #151515; padding: 20px; border-radius: 10px; border: 1px dashed #333; text-align: center; color: #666;">
+                    System is active. Real-time updates enabled.
                 </div>
             </div>
 
-            <div style="background: #151515; padding: 20px; border-radius: 10px; border: 1px dashed #333; text-align: center; color: #666;">
-                Use the sidebar to navigate and manage user funds.
+            <div id="sec-deposits" class="hidden">
+                <h2 class="page-title">Pending Deposits</h2>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>TRX ID</th>
+                                <th>Proof</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbl-dep"></tbody>
+                    </table>
+                </div>
             </div>
+
+            <div id="sec-withdraws" class="hidden">
+                <h2 class="page-title">Pending Withdrawals</h2>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Amount</th>
+                                <th>Account Details</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbl-with"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="sec-users" class="hidden">
+                <h2 class="page-title">User Database & Funds</h2>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Plan</th>
+                                <th>Wallet Balance</th>
+                                <th>Admin Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbl-users"></tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
-
-        <div id="sec-deposits" class="hidden">
-            <h2 class="page-title">Pending Deposits</h2>
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>User ID</th>
-                            <th>Amount</th>
-                            <th>Method</th>
-                            <th>TRX ID</th>
-                            <th>Proof</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbl-dep"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="sec-withdraws" class="hidden">
-            <h2 class="page-title">Pending Withdrawals</h2>
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>User ID</th>
-                            <th>Amount</th>
-                            <th>Account Details</th>
-                            <th>Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbl-with"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="sec-users" class="hidden">
-            <h2 class="page-title">User Database & Funds</h2>
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Plan</th>
-                            <th>Wallet Balance</th>
-                            <th>Admin Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbl-users"></tbody>
-                </table>
-            </div>
-        </div>
-
     </div>
 
     <script>
-        // --- FIREBASE CONFIG (Must match User App) ---
+        // --- FIREBASE CONFIG ---
         const firebaseConfig = {
              apiKey: "AIzaSyClKlpZGt-eqR3z_KdgPeS3WwE2Rubyba4",
-  authDomain: "eassy-earn-e3887.firebaseapp.com",
-  projectId: "eassy-earn-e3887",
-  storageBucket: "eassy-earn-e3887.firebasestorage.app",
-  messagingSenderId: "7947607758",
-  appId: "1:7947607758:web:4adc77cf877c91a5cd3a9f"
+             authDomain: "eassy-earn-e3887.firebaseapp.com",
+             projectId: "eassy-earn-e3887",
+             storageBucket: "eassy-earn-e3887.firebasestorage.app",
+             messagingSenderId: "7947607758",
+             appId: "1:7947607758:web:4adc77cf877c91a5cd3a9f"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- INIT ---
+        // --- LOGIN CREDENTIALS ---
+        const ADMIN_USER = "admin1234";
+        const ADMIN_PASS = "admin6543";
+
+        // --- INIT ON LOAD ---
         window.addEventListener('DOMContentLoaded', () => {
+            // Check if already logged in via Session Storage
+            if(sessionStorage.getItem('adminLoggedIn') === 'true') {
+                showDashboard();
+            }
+        });
+
+        // --- LOGIN FUNCTION ---
+        function performLogin() {
+            const u = document.getElementById('admin-user').value;
+            const p = document.getElementById('admin-pass').value;
+            const err = document.getElementById('login-error');
+
+            if(u === ADMIN_USER && p === ADMIN_PASS) {
+                // Success
+                sessionStorage.setItem('adminLoggedIn', 'true');
+                showDashboard();
+            } else {
+                // Fail
+                err.innerText = "Invalid Username or Password!";
+                // Shake effect
+                document.querySelector('.login-card').style.animation = "shake 0.3s";
+                setTimeout(() => document.querySelector('.login-card').style.animation = "", 300);
+            }
+        }
+
+        // --- SHOW DASHBOARD & LOAD DATA ---
+        function showDashboard() {
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('dashboard-wrapper').style.display = 'flex';
+            
+            // Only load data after login to save resources
             loadStats();
             loadDeposits();
             loadWithdrawals();
             loadUsers();
-        });
+        }
+
+        function logoutAdmin() {
+            sessionStorage.removeItem('adminLoggedIn');
+            location.reload();
+        }
 
         function switchTab(id, el) {
             document.querySelectorAll('.main > div').forEach(d => d.classList.add('hidden'));
@@ -348,7 +456,6 @@
             });
         }
 
-        // --- LOAD USERS WITH EDIT MONEY BUTTON ---
         function loadUsers() {
             db.collection('users').orderBy('wallet', 'desc').limit(50).onSnapshot(snap => {
                 const tb = document.getElementById('tbl-users');
@@ -384,10 +491,8 @@
             if(isNaN(amount)) return alert("Invalid Amount!");
 
             try {
-                // Directly update the Real User's Wallet in Firebase
                 await db.collection('users').doc(uid).update({
                     wallet: firebase.firestore.FieldValue.increment(amount),
-                    // If adding money, we can track it as 'earned' if desired, but usually manual adds just affect wallet
                 });
                 alert(`Successfully ${amount > 0 ? 'added' : 'deducted'} Rs ${Math.abs(amount)}.`);
             } catch(e) {
@@ -421,5 +526,14 @@
         }
 
     </script>
+    <style>
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+    </style>
 </body>
 </html>

@@ -255,7 +255,7 @@
                             <tr>
                                 <th>User ID</th>
                                 <th>Amount</th>
-                                <th>Method</th>
+                                <th>Plan Req.</th>
                                 <th>TRX ID</th>
                                 <th>Proof</th>
                                 <th>Actions</th>
@@ -292,6 +292,7 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Email</th>
+                                <th>Referral Code</th>
                                 <th>Plan</th>
                                 <th>Wallet Balance</th>
                                 <th>Admin Actions</th>
@@ -324,7 +325,6 @@
 
         // --- INIT ON LOAD ---
         window.addEventListener('DOMContentLoaded', () => {
-            // Check if already logged in via Session Storage
             if(sessionStorage.getItem('adminLoggedIn') === 'true') {
                 showDashboard();
             }
@@ -337,24 +337,19 @@
             const err = document.getElementById('login-error');
 
             if(u === ADMIN_USER && p === ADMIN_PASS) {
-                // Success
                 sessionStorage.setItem('adminLoggedIn', 'true');
                 showDashboard();
             } else {
-                // Fail
                 err.innerText = "Invalid Username or Password!";
-                // Shake effect
                 document.querySelector('.login-card').style.animation = "shake 0.3s";
                 setTimeout(() => document.querySelector('.login-card').style.animation = "", 300);
             }
         }
 
-        // --- SHOW DASHBOARD & LOAD DATA ---
         function showDashboard() {
             document.getElementById('login-section').style.display = 'none';
             document.getElementById('dashboard-wrapper').style.display = 'flex';
             
-            // Only load data after login to save resources
             loadStats();
             loadDeposits();
             loadWithdrawals();
@@ -416,10 +411,11 @@
                 
                 snap.forEach(doc => {
                     const d = doc.data();
+                    // Pass d.planName to function for Upgrades
                     const row = `<tr>
                         <td><span style="font-family:monospace; color:#888;">${d.uid.substring(0,8)}...</span></td>
                         <td style="color:white; font-weight:bold;">Rs ${d.amount}</td>
-                        <td>${d.method || 'N/A'}</td>
+                        <td><span class="badge b-verified">${d.planName || 'Add Funds'}</span></td>
                         <td style="font-family:monospace; color:var(--primary);">${d.trx}</td>
                         <td><a href="${d.proof}" target="_blank" class="proof-link">View Proof</a></td>
                         <td>
@@ -464,15 +460,17 @@
                     const u = doc.data();
                     const uid = doc.id;
                     const planBadge = u.planName && u.planName !== 'None' ? `<span class="badge b-verified">${u.planName}</span>` : '<span style="color:#555; font-size:10px;">None</span>';
-                    
+                    const refCode = u.referralCode || 'N/A';
+
                     const row = `<tr>
                         <td>${u.fullName}</td>
                         <td>${u.email}</td>
+                        <td style="color:var(--primary); font-family:monospace;">${refCode}</td>
                         <td>${planBadge}</td>
                         <td style="color:var(--primary); font-weight:bold; font-size:14px;">Rs ${u.wallet}</td>
                         <td>
                             <button class="btn btn-purple" onclick="manageFunds('${uid}', '${u.fullName}')">
-                                <i class="fas fa-coins"></i> Manage Funds
+                                <i class="fas fa-coins"></i> Manage
                             </button>
                         </td>
                     </tr>`;
@@ -481,7 +479,62 @@
             });
         }
 
-        // --- ADMIN ACTIONS ---
+        // --- ADMIN ACTIONS (UPDATED LOGIC) ---
+
+        async function approveDep(docId, uid, amount, planName) {
+            if(!confirm(`Approve Rs ${amount} and Activate/Upgrade Plan?`)) return;
+            
+            try {
+                // 1. Get User Data first to check for Referral Logic
+                const userRef = db.collection('users').doc(uid);
+                const userSnap = await userRef.get();
+                
+                if (!userSnap.exists) {
+                    alert("User not found!");
+                    return;
+                }
+
+                const userData = userSnap.data();
+                
+                // Check if user is inactive (First time activation)
+                const isFirstActivation = (!userData.planStatus || userData.planStatus === 'inactive' || userData.planName === 'None');
+
+                // 2. Approve the Deposit
+                await db.collection('deposits').doc(docId).update({ status: 'approved' });
+
+                // 3. Update User Wallet and Upgrade Plan
+                // Note: Updating planName here handles the "Upgrade" requirement.
+                await userRef.update({
+                    wallet: firebase.firestore.FieldValue.increment(parseInt(amount)),
+                    totalEarned: firebase.firestore.FieldValue.increment(parseInt(amount)), 
+                    planStatus: 'active',
+                    planName: planName || 'Custom' // Updates the plan to the new one
+                });
+
+                // 4. GIVE REFERRAL REWARD (Only if first activation)
+                if (isFirstActivation && userData.referredBy) {
+                    console.log("Checking referral for: " + userData.referredBy);
+                    
+                    // Find the Referrer by their Code
+                    const refQuery = await db.collection('users').where('referralCode', '==', userData.referredBy).limit(1).get();
+                    
+                    if (!refQuery.empty) {
+                        const referrerDoc = refQuery.docs[0];
+                        // Add 500 Rs to referrer
+                        await referrerDoc.ref.update({
+                            wallet: firebase.firestore.FieldValue.increment(500)
+                        });
+                        console.log("Referral Reward of 500 Rs sent to " + userData.referredBy);
+                    }
+                }
+
+                alert("Approved Successfully! Plan Updated & Referral Bonus Sent (if applicable).");
+
+            } catch(e) { 
+                console.error(e);
+                alert("Error: " + e.message); 
+            }
+        }
 
         async function manageFunds(uid, name) {
             let amount = prompt(`Manage funds for ${name}.\n\nEnter amount to ADD (e.g. 500)\nEnter negative to REMOVE (e.g. -500)`);
@@ -498,20 +551,6 @@
             } catch(e) {
                 alert("Error updating balance: " + e.message);
             }
-        }
-
-        async function approveDep(docId, uid, amount, planName) {
-            if(!confirm(`Approve deposit of Rs ${amount}?`)) return;
-            try {
-                await db.collection('deposits').doc(docId).update({ status: 'approved' });
-                await db.collection('users').doc(uid).update({
-                    wallet: firebase.firestore.FieldValue.increment(parseInt(amount)),
-                    totalEarned: firebase.firestore.FieldValue.increment(parseInt(amount)), 
-                    planStatus: 'active',
-                    planName: planName || 'Custom'
-                });
-                alert("Approved.");
-            } catch(e) { alert(e.message); }
         }
 
         async function approveWith(docId) {

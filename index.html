@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Admin | Easy Earn</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #050505;
+            --bg-card: #111;
+            --primary: #FFD700;
+            --green: #00E676;
+            --red: #FF4444;
+            --blue: #2979FF;
+            --purple: #D500F9;
+            --text-main: #fff;
+            --text-muted: #888;
+            --border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background: var(--bg-dark); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 260px;
+            background: #0a0a0a;
+            border-right: var(--border);
+            height: 100vh;
+            position: fixed;
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+        .brand {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 50px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .nav-item {
+            padding: 14px 20px;
+            color: var(--text-muted);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 14px;
+        }
+        .nav-item:hover, .nav-item.active {
+            background: rgba(255, 215, 0, 0.1);
+            color: var(--primary);
+            border-left: 3px solid var(--primary);
+        }
+
+        /* --- CONTENT --- */
+        .main { margin-left: 260px; padding: 40px; flex: 1; }
+        .page-title { font-size: 24px; font-weight: 600; margin-bottom: 30px; border-bottom: 1px solid #222; padding-bottom: 15px; }
+
+        /* --- STAT CARDS --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            position: relative;
+            overflow: hidden;
+            transition: 0.3s;
+        }
+        .stat-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.2); }
+        .stat-icon { position: absolute; top: 20px; right: 20px; font-size: 24px; opacity: 0.3; }
+        .stat-val { font-size: 28px; font-weight: 700; color: white; margin-top: 10px; }
+        .stat-lbl { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 500; }
+        
+        .card-users { border-bottom: 3px solid var(--blue); }
+        .card-dep-tot { border-bottom: 3px solid var(--green); }
+        .card-with-tot { border-bottom: 3px solid var(--red); }
+        .card-dep-pen { border-bottom: 3px solid var(--primary); background: linear-gradient(180deg, #111, rgba(255, 215, 0, 0.05)); }
+        .card-with-pen { border-bottom: 3px solid orange; background: linear-gradient(180deg, #111, rgba(255, 165, 0, 0.05)); }
+
+        /* --- TABLES --- */
+        .table-wrapper {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: var(--border);
+            overflow: hidden;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: rgba(255, 255, 255, 0.03); color: var(--primary); font-size: 12px; text-transform: uppercase; padding: 15px; text-align: left; font-weight: 600; }
+        td { padding: 15px; border-bottom: 1px solid #222; color: #ccc; font-size: 13px; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+
+        /* --- BUTTONS & BADGES --- */
+        .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-right: 5px; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+        .btn:hover { opacity: 0.8; transform: translateY(-1px); }
+        
+        .btn-green { background: rgba(0, 230, 118, 0.1); color: var(--green); border: 1px solid var(--green); }
+        .btn-red { background: rgba(255, 68, 68, 0.1); color: var(--red); border: 1px solid var(--red); }
+        .btn-purple { background: linear-gradient(45deg, #D500F9, #AA00FF); color: white; box-shadow: 0 4px 10px rgba(213, 0, 249, 0.3); }
+        
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        .b-verified { background: rgba(33, 150, 243, 0.2); color: var(--blue); }
+        
+        .hidden { display: none; }
+        .proof-link { color: var(--blue); text-decoration: none; border-bottom: 1px dashed var(--blue); }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+        <div class="brand"><i class="fas fa-shield-alt"></i> MASTER ADMIN</div>
+        <div class="nav-item active" onclick="switchTab('overview', this)"><i class="fas fa-chart-pie"></i> Overview</div>
+        <div class="nav-item" onclick="switchTab('deposits', this)"><i class="fas fa-arrow-down"></i> Deposits <span id="badge-dep" style="margin-left:auto; font-size:10px; background:var(--primary); color:black; padding:2px 6px; border-radius:10px; display:none;">0</span></div>
+        <div class="nav-item" onclick="switchTab('withdraws', this)"><i class="fas fa-arrow-up"></i> Withdrawals <span id="badge-with" style="margin-left:auto; font-size:10px; background:var(--red); color:white; padding:2px 6px; border-radius:10px; display:none;">0</span></div>
+        <div class="nav-item" onclick="switchTab('users', this)"><i class="fas fa-users"></i> User Database</div>
+    </nav>
+
+    <div class="main">
+        
+        <div id="sec-overview">
+            <h2 class="page-title">Dashboard Overview</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card card-users">
+                    <i class="fas fa-users stat-icon" style="color: var(--blue);"></i>
+                    <div class="stat-lbl">Total Users</div>
+                    <div class="stat-val" id="st-users">0</div>
+                </div>
+
+                <div class="stat-card card-dep-tot">
+                    <i class="fas fa-sack-dollar stat-icon" style="color: var(--green);"></i>
+                    <div class="stat-lbl">Total Deposited</div>
+                    <div class="stat-val" style="color: var(--green);">Rs <span id="st-total-dep">0</span></div>
+                </div>
+
+                <div class="stat-card card-with-tot">
+                    <i class="fas fa-hand-holding-usd stat-icon" style="color: var(--red);"></i>
+                    <div class="stat-lbl">Total Withdrawn</div>
+                    <div class="stat-val" style="color: var(--red);">Rs <span id="st-total-with">0</span></div>
+                </div>
+
+                <div class="stat-card card-dep-pen">
+                    <i class="fas fa-clock stat-icon" style="color: var(--primary);"></i>
+                    <div class="stat-lbl">Pending Deposits</div>
+                    <div class="stat-val" style="color: var(--primary);"><span id="st-pending-dep">0</span></div>
+                </div>
+
+                <div class="stat-card card-with-pen">
+                    <i class="fas fa-exclamation-circle stat-icon" style="color: orange;"></i>
+                    <div class="stat-lbl">Pending Withdrawals</div>
+                    <div class="stat-val" style="color: orange;"><span id="st-pending-with">0</span></div>
+                </div>
+            </div>
+
+            <div style="background: #151515; padding: 20px; border-radius: 10px; border: 1px dashed #333; text-align: center; color: #666;">
+                Use the sidebar to navigate and manage user funds.
+            </div>
+        </div>
+
+        <div id="sec-deposits" class="hidden">
+            <h2 class="page-title">Pending Deposits</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>TRX ID</th>
+                            <th>Proof</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbl-dep"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="sec-withdraws" class="hidden">
+            <h2 class="page-title">Pending Withdrawals</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Amount</th>
+                            <th>Account Details</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbl-with"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="sec-users" class="hidden">
+            <h2 class="page-title">User Database & Funds</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Plan</th>
+                            <th>Wallet Balance</th>
+                            <th>Admin Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbl-users"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- FIREBASE CONFIG (Must match User App) ---
+        const firebaseConfig = {
+             apiKey: "AIzaSyClKlpZGt-eqR3z_KdgPeS3WwE2Rubyba4",
+  authDomain: "eassy-earn-e3887.firebaseapp.com",
+  projectId: "eassy-earn-e3887",
+  storageBucket: "eassy-earn-e3887.firebasestorage.app",
+  messagingSenderId: "7947607758",
+  appId: "1:7947607758:web:4adc77cf877c91a5cd3a9f"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // --- INIT ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            loadDeposits();
+            loadWithdrawals();
+            loadUsers();
+        });
+
+        function switchTab(id, el) {
+            document.querySelectorAll('.main > div').forEach(d => d.classList.add('hidden'));
+            document.getElementById('sec-' + id).classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+        }
+
+        // --- REAL-TIME STATS ---
+        function loadStats() {
+            db.collection('users').onSnapshot(snap => {
+                document.getElementById('st-users').innerText = snap.size;
+            });
+
+            db.collection('deposits').onSnapshot(snap => {
+                let pendingCount = 0, totalAmount = 0;
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    if(d.status === 'pending') pendingCount++;
+                    if(d.status === 'approved') totalAmount += parseInt(d.amount || 0);
+                });
+                document.getElementById('st-pending-dep').innerText = pendingCount;
+                document.getElementById('st-total-dep').innerText = totalAmount.toLocaleString();
+                const b = document.getElementById('badge-dep');
+                if(pendingCount > 0) { b.style.display='inline-block'; b.innerText = pendingCount; } else { b.style.display='none'; }
+            });
+
+            db.collection('withdrawals').onSnapshot(snap => {
+                let pendingCount = 0, totalAmount = 0;
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    if(d.status === 'pending') pendingCount++;
+                    if(d.status === 'approved') totalAmount += parseInt(d.amount || 0);
+                });
+                document.getElementById('st-pending-with').innerText = pendingCount;
+                document.getElementById('st-total-with').innerText = totalAmount.toLocaleString();
+                const b = document.getElementById('badge-with');
+                if(pendingCount > 0) { b.style.display='inline-block'; b.innerText = pendingCount; } else { b.style.display='none'; }
+            });
+        }
+
+        // --- DATA TABLES ---
+
+        function loadDeposits() {
+            db.collection('deposits').where('status', '==', 'pending').orderBy('date', 'desc').onSnapshot(snap => {
+                const tb = document.getElementById('tbl-dep');
+                tb.innerHTML = '';
+                if(snap.empty) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">No pending deposits</td></tr>'; return; }
+                
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const row = `<tr>
+                        <td><span style="font-family:monospace; color:#888;">${d.uid.substring(0,8)}...</span></td>
+                        <td style="color:white; font-weight:bold;">Rs ${d.amount}</td>
+                        <td>${d.method || 'N/A'}</td>
+                        <td style="font-family:monospace; color:var(--primary);">${d.trx}</td>
+                        <td><a href="${d.proof}" target="_blank" class="proof-link">View Proof</a></td>
+                        <td>
+                            <button class="btn btn-green" onclick="approveDep('${doc.id}', '${d.uid}', ${d.amount}, '${d.planName}')"><i class="fas fa-check"></i> Approve</button>
+                            <button class="btn btn-red" onclick="rejectDoc('deposits', '${doc.id}')"><i class="fas fa-times"></i></button>
+                        </td>
+                    </tr>`;
+                    tb.innerHTML += row;
+                });
+            });
+        }
+
+        function loadWithdrawals() {
+            db.collection('withdrawals').where('status', '==', 'pending').orderBy('date', 'desc').onSnapshot(snap => {
+                const tb = document.getElementById('tbl-with');
+                tb.innerHTML = '';
+                if(snap.empty) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#555;">No pending withdrawals</td></tr>'; return; }
+
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const dateStr = d.date ? new Date(d.date.seconds*1000).toLocaleDateString() : 'N/A';
+                    const row = `<tr>
+                        <td><span style="font-family:monospace; color:#888;">${d.uid.substring(0,8)}...</span></td>
+                        <td style="color:var(--red); font-weight:bold;">Rs ${d.amount}</td>
+                        <td>${d.account}</td>
+                        <td>${dateStr}</td>
+                        <td>
+                            <button class="btn btn-green" onclick="approveWith('${doc.id}')"><i class="fas fa-check"></i> Paid</button>
+                            <button class="btn btn-red" onclick="rejectDoc('withdrawals', '${doc.id}')"><i class="fas fa-times"></i></button>
+                        </td>
+                    </tr>`;
+                    tb.innerHTML += row;
+                });
+            });
+        }
+
+        // --- LOAD USERS WITH EDIT MONEY BUTTON ---
+        function loadUsers() {
+            db.collection('users').orderBy('wallet', 'desc').limit(50).onSnapshot(snap => {
+                const tb = document.getElementById('tbl-users');
+                tb.innerHTML = '';
+                snap.forEach(doc => {
+                    const u = doc.data();
+                    const uid = doc.id;
+                    const planBadge = u.planName && u.planName !== 'None' ? `<span class="badge b-verified">${u.planName}</span>` : '<span style="color:#555; font-size:10px;">None</span>';
+                    
+                    const row = `<tr>
+                        <td>${u.fullName}</td>
+                        <td>${u.email}</td>
+                        <td>${planBadge}</td>
+                        <td style="color:var(--primary); font-weight:bold; font-size:14px;">Rs ${u.wallet}</td>
+                        <td>
+                            <button class="btn btn-purple" onclick="manageFunds('${uid}', '${u.fullName}')">
+                                <i class="fas fa-coins"></i> Manage Funds
+                            </button>
+                        </td>
+                    </tr>`;
+                    tb.innerHTML += row;
+                });
+            });
+        }
+
+        // --- ADMIN ACTIONS ---
+
+        async function manageFunds(uid, name) {
+            let amount = prompt(`Manage funds for ${name}.\n\nEnter amount to ADD (e.g. 500)\nEnter negative to REMOVE (e.g. -500)`);
+            
+            if(!amount) return;
+            amount = parseInt(amount);
+            if(isNaN(amount)) return alert("Invalid Amount!");
+
+            try {
+                // Directly update the Real User's Wallet in Firebase
+                await db.collection('users').doc(uid).update({
+                    wallet: firebase.firestore.FieldValue.increment(amount),
+                    // If adding money, we can track it as 'earned' if desired, but usually manual adds just affect wallet
+                });
+                alert(`Successfully ${amount > 0 ? 'added' : 'deducted'} Rs ${Math.abs(amount)}.`);
+            } catch(e) {
+                alert("Error updating balance: " + e.message);
+            }
+        }
+
+        async function approveDep(docId, uid, amount, planName) {
+            if(!confirm(`Approve deposit of Rs ${amount}?`)) return;
+            try {
+                await db.collection('deposits').doc(docId).update({ status: 'approved' });
+                await db.collection('users').doc(uid).update({
+                    wallet: firebase.firestore.FieldValue.increment(parseInt(amount)),
+                    totalEarned: firebase.firestore.FieldValue.increment(parseInt(amount)), 
+                    planStatus: 'active',
+                    planName: planName || 'Custom'
+                });
+                alert("Approved.");
+            } catch(e) { alert(e.message); }
+        }
+
+        async function approveWith(docId) {
+            if(!confirm("Confirm money sent?")) return;
+            await db.collection('withdrawals').doc(docId).update({ status: 'approved' });
+        }
+
+        async function rejectDoc(collection, docId) {
+            if(confirm("Reject this request?")) {
+                await db.collection(collection).doc(docId).update({ status: 'rejected' });
+            }
+        }
+
+    </script>
+</body>
+</html>
